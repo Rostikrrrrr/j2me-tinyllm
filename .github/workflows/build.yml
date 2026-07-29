@@ -1,4 +1,4 @@
-name: Build JAR
+name: Build Working JAR
 on: [push, workflow_dispatch]
 jobs:
   build:
@@ -11,19 +11,38 @@ jobs:
         with:
           java-version: '8'
           distribution: 'temurin'
-          cache: 'gradle'
 
-      - name: Clear Windows line endings
-        run: sed -i 's/\r$//' gradlew
+      - name: Download Java ME Library
+        run: |
+          mkdir -p lib
+          curl -L -o lib/midpapi20.jar https://maven.org
+          curl -L -o lib/cldcapi11.jar https://maven.org
 
-      - name: Grant execute permission
-        run: chmod +x gradlew
+      - name: Compile Java Code
+        run: |
+          mkdir -p build/classes
+          javac -source 1.3 -target 1.3 -bootclasspath lib/midpapi20.jar:lib/cldcapi11.jar -d build/classes src/main/java/tinyllm/TinyLLMMidlet.java
 
-      - name: Build with Gradle
-        run: ./gradlew build --no-daemon
+      - name: Create Manifest
+        run: |
+          mkdir -p build/META-INF
+          cat << 'EOF' > build/META-INF/MANIFEST.MF
+          MIDlet-Name: TinyLLM
+          MIDlet-Version: 1.0
+          MIDlet-Vendor: mgruszkiewicz
+          MIDlet-1: TinyLLM,,tinyllm.TinyLLMMidlet
+          MicroEdition-Configuration: CLDC-1.1
+          MicroEdition-Profiles: MIDP-2.0
+          EOF
 
-      - name: Upload Artifact
+      - name: Pack JAR
+        run: |
+          mkdir -p dist
+          cd build
+          jar cfm ../dist/TinyLLM.jar META-INF/MANIFEST.MF tinyllm/TinyLLMMidlet.class
+
+      - name: Upload Finished JAR
         uses: actions/upload-artifact@v4
         with:
-          name: j2me-app
-          path: build/libs/
+          name: TinyLLM-Ready-App
+          path: dist/TinyLLM.jar
