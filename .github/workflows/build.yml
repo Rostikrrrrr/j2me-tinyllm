@@ -1,0 +1,14 @@
+name: Build JAR
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build with Docker
+        run: docker run --rm -v $(pwd):/app -w /app eclipse-temurin:8-jdk ./gradlew build
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: j2me-app
+          path: build/libs/
